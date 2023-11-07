@@ -1,4 +1,4 @@
-﻿#include "susreader.h"
+﻿#include "susreader.hpp"
 
 #include <sstream>
 #include <regex>
@@ -64,23 +64,24 @@ namespace SusReader {
         return stoi(str, nullptr, 36);
     }
 
-    struct PosBeatData {
-        double posBeat;
-        string data;
-    };
-
     double measureToBeat(vector<BeatPerMeasureChange>& beatPerMeasureChanges, double measure) {
         if (measure < beatPerMeasureChanges[0].posMeasure) {
             return measure * beatPerMeasureChanges[0].beatPerMeasure;
         }
-        for (int i = 0; i < beatPerMeasureChanges.size(); i++) {
+        int i;
+        for (i = 0; i < beatPerMeasureChanges.size() - 1; i++) {
             if (beatPerMeasureChanges[i].posMeasure == measure) return beatPerMeasureChanges[i].posBeat;
-            if (beatPerMeasureChanges[i].posMeasure < measure && (i == beatPerMeasureChanges.size() - 1 || measure < beatPerMeasureChanges[i + 1].posMeasure)) {
+            if (beatPerMeasureChanges[i].posMeasure < measure && measure < beatPerMeasureChanges[i + 1].posMeasure) {
                 return beatPerMeasureChanges[i].posBeat + (measure - beatPerMeasureChanges[i].posMeasure) * beatPerMeasureChanges[i].beatPerMeasure;
             }
         }
+        return beatPerMeasureChanges[i].posBeat + (measure - beatPerMeasureChanges[i].posMeasure) * beatPerMeasureChanges[i].beatPerMeasure;
     }
 
+    struct PosBeatData {
+        double posBeat;
+        string data;
+    };
     vector<PosBeatData> scanPosBeatData(vector<BeatPerMeasureChange>& beatPerMeasureChanges, const string& line) {
         double measure = stoi(line.substr(1, 3));
         const string right = split(line, ':')[1];
@@ -102,12 +103,15 @@ namespace SusReader {
         if (beat < bpmChanges[0].posBeat) {
             return -offsetSec + (beat / bpmChanges[0].bpm) * 60;
         }
-        for (int i = 0; i < bpmChanges.size(); i++) {
+        int i;
+        for (i = 0; i < bpmChanges.size() - 1; i++) {
             if (bpmChanges[i].posBeat == beat) return bpmChanges[i].posSec;
-            if (bpmChanges[i].posBeat < beat && (i == bpmChanges.size() - 1 || beat < bpmChanges[i + 1].posBeat)) {
+            if (bpmChanges[i].posBeat < beat && beat < bpmChanges[i + 1].posBeat) {
                 return bpmChanges[i].posSec + ((beat - bpmChanges[i].posBeat) / bpmChanges[i].bpm) * 60;
             }
         }
+        
+        return bpmChanges[i].posSec + ((beat - bpmChanges[i].posBeat) / bpmChanges[i].bpm) * 60;
     }
 
     SongData* readSus(string filePath) {
@@ -174,15 +178,6 @@ namespace SusReader {
                 5: flick
                 */
                 const char objType = line[4];
-
-                if (objType == '0' && line[5] == '2') {
-                    // 1小節あたりの拍数変更
-                    BeatPerMeasureChange o{};
-                    o.beatPerMeasure = stod(split(line, ':')[1]);
-                    o.posBeat = b36(split(line, ':')[0].substr(1, 3));
-                    beatPerMeasures.push_back(o);
-                    continue;
-                }
 
                 const auto objects = scanPosBeatData(beatPerMeasures, line);
 
@@ -293,17 +288,17 @@ namespace SusReader {
 using namespace SusReader;
 
 int main() {
-        auto data = readSus("t.sus");
-        for (auto& note : data->notes) {
-            if (note->type == NoteType::Tap) {
-                auto tap = dynamic_cast<Tap*>(note);
-                cout << tap->posSec << endl;
-            }
-            else if (note->type == NoteType::Slide1) {
-                auto slide = dynamic_cast<Slide1*>(note);
-                cout << slide->startPosSec << " : " << slide->endPosSec << endl;
-            }
+    auto data = readSus("t.sus");
+    for (auto& note : data->notes) {
+        if (note->type == NoteType::Tap) {
+            auto tap = dynamic_cast<Tap*>(note);
+            cout << tap->posSec << endl;
         }
-        delete data;
+        else if (note->type == NoteType::Slide1) {
+            auto slide = dynamic_cast<Slide1*>(note);
+            cout << slide->startPosSec << " : " << slide->endPosSec << endl;
+        }
+    }
+    delete data;
     return 0;
 }
