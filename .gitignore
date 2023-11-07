@@ -1,4 +1,3 @@
-*.sus
 node_modules
 dist
 .vscode
