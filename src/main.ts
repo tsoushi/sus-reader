@@ -77,24 +77,37 @@ for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
             }
         } else if (objType === 'slide1') {
             const channel = parseInt(line[6], 36)
+            const localChannelMap: { [index: number]: Partial<Slide1> } = {}
+
             for (const obj of objects) {
                 if (obj.data[0] === '1') {
-                    channelMap[channel] = {
+                    localChannelMap[channel] = {
                         type: 'slide1',
                         startLeftLane: parseInt(line[5], 36),
                         startWidth: parseInt(obj.data[1]),
                         startPosBeat: obj.posBeat,
                     }
-
-                    notes.push(channelMap[channel])
                 } else if (obj.data[0] === '2') {
-                    channelMap[channel].endLeftLane = parseInt(line[5], 36)
-                    channelMap[channel].endWidth = parseInt(obj.data[1])
-                    channelMap[channel].endPosBeat = obj.posBeat
+                    if (localChannelMap[channel] === undefined) {
+                        channelMap[channel].endLeftLane = parseInt(line[5], 36)
+                        channelMap[channel].endWidth = parseInt(obj.data[1])
+                        channelMap[channel].endPosBeat = obj.posBeat
 
-                    delete channelMap[channel]
+                        notes.push(channelMap[channel])
+                        delete channelMap[channel]
+                    } else {
+                        localChannelMap[channel].endLeftLane = parseInt(line[5], 36)
+                        localChannelMap[channel].endWidth = parseInt(obj.data[1])
+                        localChannelMap[channel].endPosBeat = obj.posBeat
+
+                        notes.push(localChannelMap[channel])
+                        delete localChannelMap[channel]
+                    }
                 }
             }
+            Object.keys(localChannelMap).map((key) => {
+                channelMap[parseInt(key)] = localChannelMap[parseInt(key)]
+            })
         }
     }
 }
