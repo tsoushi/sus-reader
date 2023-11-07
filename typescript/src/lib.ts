@@ -66,6 +66,7 @@ const scanPosBeatData = (beatPerMeasureChanges: Omit<BeatPerMeasureChange, 'posS
     return objects
 }
 
+// 曲開始時からの小節数を拍数に変換
 const measureToBeat = (beatPerMeasureChanges: Omit<BeatPerMeasureChange, 'posSec'>[], measure: number) => {
     if (measure < beatPerMeasureChanges[0].posMeasure) {
         return measure * beatPerMeasureChanges[0].beatPerMeasure
@@ -79,6 +80,7 @@ const measureToBeat = (beatPerMeasureChanges: Omit<BeatPerMeasureChange, 'posSec
     throw new Error('measureToBeat: unreachable')
 }
 
+// 曲開始時からの拍数を秒数に変換
 const beatToSec = (bpmChanges: BPMChange[], beat: number, offsetSec: number) => {
     if (beat < bpmChanges[0].posBeat) {
         return -offsetSec + (beat / bpmChanges[0].bpm) * 60
@@ -118,6 +120,7 @@ export const readSus = (text: string) => {
         }
     }
 
+    // 拍数変更情報のposBeatを計算
     {
         let currentMeasure = 0
         let currentBeat = 0
