@@ -94,11 +94,11 @@ const beatToSec = (bpmChanges: BPMChange[], beat: number, offsetSec: number) => 
     throw new Error('beatToSec: unreachable')
 }
 
-export const readSusFromFile = (filePath: string) => {
+export const readSusFromFile = (filePath: string): SongData => {
     return readSus(fs.readFileSync(filePath, 'utf-8'))
 }
 
-export const readSus = (text: string) => {
+export const readSus = (text: string): SongData => {
     const lines = text.split('\n')
 
     const notes: Partial<Note>[] = []
