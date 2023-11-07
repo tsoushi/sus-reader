@@ -47,7 +47,7 @@ export interface BeatPerMeasureChange {
 }
 
 export const scanPosBeatData = (line: string) => {
-    const beat = parseInt(line.substring(1, 4), 36)
+    const beat = parseInt(line.substring(1, 4))
     const right = line.split(':')[1]
     const size = right.length / 2
 
