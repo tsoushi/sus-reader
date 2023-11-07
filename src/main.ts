@@ -54,7 +54,7 @@ for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
         if (objType === 'beatPerMeasureChange') {
             beatPerMeasures.push({
                 beatPerMeasure: parseFloat(line.split(':')[1]),
-                posBeat: parseInt(line.split(':')[0].substring(1, 4), 36),
+                posBeat: parseInt(line.split(':')[0].substring(1, 4), 10),
             })
             continue
         }
