@@ -44,10 +44,11 @@ export interface BeatPerMeasureChange {
     beatPerMeasure: number
     posSec: number
     posBeat: number
+    posMeasure: number
 }
 
-export const scanPosBeatData = (line: string) => {
-    const beat = parseInt(line.substring(1, 4))
+export const scanPosBeatData = (beatPerMeasureChanges: Omit<BeatPerMeasureChange, 'posSec'>[], line: string) => {
+    const measure = parseInt(line.substring(1, 4))
     const right = line.split(':')[1]
     const size = right.length / 2
 
@@ -56,11 +57,24 @@ export const scanPosBeatData = (line: string) => {
         const data = right.substring(i * 2, i * 2 + 2)
         if (data === '00') continue
         objects.push({
-            posBeat: beat + i / size,
+            posBeat: measureToBeat(beatPerMeasureChanges, measure + i / size),
             data,
         })
     }
     return objects
+}
+
+const measureToBeat = (beatPerMeasureChanges: Omit<BeatPerMeasureChange, 'posSec'>[], measure: number) => {
+    if (measure < beatPerMeasureChanges[0].posMeasure) {
+        return measure * beatPerMeasureChanges[0].beatPerMeasure
+    }
+    for (let i = 0; i < beatPerMeasureChanges.length; i++) {
+        if (beatPerMeasureChanges[i].posMeasure === measure) return beatPerMeasureChanges[i].posBeat
+        if (beatPerMeasureChanges[i].posMeasure < measure && (i === beatPerMeasureChanges.length - 1 || measure < beatPerMeasureChanges[i + 1].posMeasure)) {
+            return beatPerMeasureChanges[i].posBeat + (measure - beatPerMeasureChanges[i].posMeasure) * beatPerMeasureChanges[i].beatPerMeasure
+        }
+    }
+    throw new Error('measureToBeat: unreachable')
 }
 
 export const beatToSec = (bpmChanges: BPMChange[], beat: number, offsetSec: number) => {

@@ -2,13 +2,43 @@ import fs from 'fs'
 
 import { Slide1, TapNote, BPMChange, scanPosBeatData, BeatPerMeasureChange, SongInfo, beatToSec, SongData, Note } from './lib'
 
-const lines = fs.readFileSync('song1.sus', 'utf-8').split('\n')
+const lines = fs.readFileSync('t.sus', 'utf-8').split('\n')
 
 const notes: Partial<Note>[] = []
-const beatPerMeasures: Partial<BeatPerMeasureChange>[] = []
+const preBeatPerMeasures: Partial<BeatPerMeasureChange>[] = []
 const channelMap: { [index: number]: Partial<Slide1> } = {}
 const bpmChangeMap: { [index: number]: Partial<BPMChange> } = {}
 const songInfo: SongInfo = {}
+
+// 小節情報前読み込み
+for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+    const line = lines[lineIdx]
+
+    if (line.match(/^#[0-9]+02:[0-9]+$/)) {
+        preBeatPerMeasures.push({
+            beatPerMeasure: parseFloat(line.split(':')[1]),
+            posMeasure: parseInt(line.split(':')[0].substring(1, 4), 10),
+        })
+        continue
+    }
+}
+
+{
+    let currentMeasure = 0
+    let currentBeat = 0
+    if (preBeatPerMeasures[0].beatPerMeasure === undefined) throw new Error('unexpected error')
+    let currentBeatPerMeasure = preBeatPerMeasures[0].beatPerMeasure
+
+    for (const beatPerMeasure of preBeatPerMeasures) {
+        if (beatPerMeasure.posMeasure === undefined) throw new Error('unexpected error')
+        if (beatPerMeasure.beatPerMeasure === undefined) throw new Error('unexpected error')
+        beatPerMeasure.posBeat = (beatPerMeasure.posMeasure - currentMeasure) * currentBeatPerMeasure + currentBeat
+        currentMeasure = beatPerMeasure.posMeasure
+        currentBeat = beatPerMeasure.posBeat
+        currentBeatPerMeasure = beatPerMeasure.beatPerMeasure
+    }
+}
+const beatPerMeasures = preBeatPerMeasures as (Omit<BeatPerMeasureChange, 'posSec'> & Partial<Pick<BeatPerMeasureChange, 'posSec'>>)[]
 
 for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
     const line = lines[lineIdx]
@@ -28,13 +58,12 @@ for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
         continue
     }
 
-    if (line.match(/^#[0-9A-Za-z]+:[0-9a-zA-Z]+$/)) {
+    if (line.match(/^#[0-9]+:[0-9a-zA-Z]+$/)) {
         // 小節情報がある場合
         const objType = (() => {
             switch (line[4]) {
                 case '0':
-                    if (line[5] === '2') return 'beatPerMeasureChange'
-                    else if (line[5] === '8') return 'bpmChange'
+                    if (line[5] === '8') return 'bpmChange'
                     else return null
                 case '1':
                     return 'tap'
@@ -51,15 +80,7 @@ for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
             }
         })()
 
-        if (objType === 'beatPerMeasureChange') {
-            beatPerMeasures.push({
-                beatPerMeasure: parseFloat(line.split(':')[1]),
-                posBeat: parseInt(line.split(':')[0].substring(1, 4), 10),
-            })
-            continue
-        }
-
-        const objects = scanPosBeatData(line)
+        const objects = scanPosBeatData(beatPerMeasures, line)
 
         if (objType === 'bpmChange') {
             for (const obj of objects) {
@@ -140,7 +161,7 @@ notes.map((note) => {
 })
 
 beatPerMeasures.map((beatPerMeasure) => {
-    beatPerMeasure.posSec = beatToSec(bpmChanges, beatPerMeasure.posBeat as number, songInfo.waveOffsetSec ?? 0)
+    beatPerMeasure.posSec = beatToSec(bpmChanges, beatPerMeasure.posBeat, songInfo.waveOffsetSec ?? 0)
 })
 
 const songData: SongData = {
